@@ -1,0 +1,270 @@
+import React, { useState, useEffect } from 'react';
+import { db } from '../../firebase';
+import { collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp, runTransaction, doc } from 'firebase/firestore';
+import { toast } from 'react-toastify';
+import Loader from '../../components/Loader';
+
+const marketNames = [
+  "DISAWAR",
+  "FARIDABAD",
+  "GALI",
+  "GHAZIABAD",
+ 
+];
+
+const HarufUpdate = () => {
+  const [selectedMarket, setSelectedMarket] = useState(marketNames[0]);
+  const [newResult, setNewResult] = useState('');
+  const [currentYesterdayResult, setCurrentYesterdayResult] = useState('..');
+  const [currentTodayResult, setCurrentTodayResult] = useState('..');
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [history, setHistory] = useState([]);
+
+  const fetchResultsAndHistory = async (market) => {
+    setLoading(true);
+    setCurrentTodayResult('..');
+    setCurrentYesterdayResult('..');
+    setHistory([]);
+    try {
+      const resultsRef = collection(db, "results");
+      // Query without orderBy to avoid needing a composite index
+      const q = query(resultsRef, where("marketName", "==", market));
+      const querySnapshot = await getDocs(q);
+      
+      let marketResults = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      // Sort on the client-side
+      marketResults.sort((a, b) => {
+        const dateA = a.date?.toDate()?.getTime() || 0;
+        const dateB = b.date?.toDate()?.getTime() || 0;
+        return dateB - dateA;
+      });
+
+      // Manually apply the limit
+      const limitedResults = marketResults.slice(0, 30);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      let foundToday = false;
+      let foundYesterday = false;
+
+      for (const result of limitedResults) {
+        if (result.date) { // Ensure date exists
+            const resultDate = result.date.toDate();
+            if (!foundToday && resultDate >= today && resultDate < tomorrow) {
+                setCurrentTodayResult(result.number);
+                foundToday = true;
+            }
+            if (!foundYesterday && resultDate >= yesterday && resultDate < today) {
+                setCurrentYesterdayResult(result.number);
+                foundYesterday = true;
+            }
+        }
+      }
+
+      if (!foundToday) setCurrentTodayResult('..');
+      if (!foundYesterday) setCurrentYesterdayResult('..');
+      
+      setHistory(limitedResults);
+
+    } catch (error) {
+      console.error("Error fetching results:", error);
+      toast.error("Failed to fetch results.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedMarket) {
+        fetchResultsAndHistory(selectedMarket);
+    }
+  }, [selectedMarket]);
+
+  const processHarufBetsForMarket = async (marketName, winningNumberStr) => {
+    const winningNumber = parseInt(winningNumberStr, 10);
+    if (isNaN(winningNumber)) {
+        toast.error("Invalid winning number for processing bets.");
+        return;
+    }
+
+    const betsRef = collection(db, "harufBets");
+    const q = query(
+        betsRef,
+        where("marketName", "==", marketName),
+        where("status", "==", "pending")
+    );
+
+    const pendingBetsSnapshot = await getDocs(q);
+
+    if (pendingBetsSnapshot.empty) {
+        toast.info(`No pending haruf bets to process for ${marketName}.`);
+        return;
+    }
+
+    const HARUF_PAYOUT_MULTIPLIER = 90;
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const betDoc of pendingBetsSnapshot.docs) {
+        const betData = betDoc.data();
+        const userDocRef = doc(db, "users", betData.userId);
+
+        try {
+            await runTransaction(db, async (transaction) => {
+                const userDoc = await transaction.get(userDocRef);
+                if (!userDoc.exists()) throw new Error(`User ${betData.userId} not found`);
+                
+                const freshBetDoc = await transaction.get(betDoc.ref);
+                if (!freshBetDoc.exists() || freshBetDoc.data().status !== 'pending') return;
+
+                if (parseInt(betData.selectedNumber) === winningNumber) {
+                    const winnings = betData.betAmount * HARUF_PAYOUT_MULTIPLIER;
+                    transaction.update(userDocRef, { 
+                        winningMoney: (userDoc.data().winningMoney || 0) + winnings 
+                    });
+                    transaction.update(betDoc.ref, { status: "win", winnings, winningNumber: winningNumberStr });
+                } else {
+                    transaction.update(betDoc.ref, { status: "loss", winnings: 0, winningNumber: winningNumberStr });
+                }
+            });
+            successCount++;
+        } catch (e) {
+            errorCount++;
+            console.error(`Failed to process haruf bet ${betDoc.id}:`, e);
+        }
+    }
+    toast.info(`Processed ${successCount} bets for ${marketName}. ${errorCount} failed.`);
+  };
+
+
+  const handleUpdateResult = async () => {
+    if (!newResult || isNaN(parseInt(newResult)) || parseInt(newResult) < 1 || parseInt(newResult) > 100) {
+      toast.error("Please enter a valid number between 1 and 100.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await addDoc(collection(db, "results"), {
+        marketName: selectedMarket,
+        number: parseInt(newResult).toString().padStart(2, '0'), // Ensure two digits
+        date: serverTimestamp(),
+      });
+      toast.success(`Result for ${selectedMarket} updated. Processing bets...`);
+      
+      await processHarufBetsForMarket(selectedMarket, newResult);
+
+      setNewResult('');
+      fetchResultsAndHistory(selectedMarket); // Refresh results and history
+    } catch (error) {
+      console.error("Error updating result:", error);
+      toast.error("Failed to update result.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="p-6">
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h3 className="text-lg font-semibold mb-4">Update Market Results</h3>
+
+        <div className="mb-4">
+          <label htmlFor="marketSelect" className="block text-sm font-medium text-gray-700">Select Market</label>
+          <select
+            id="marketSelect"
+            value={selectedMarket}
+            onChange={(e) => setSelectedMarket(e.target.value)}
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+          >
+            {marketNames.map((name) => (
+              <option key={name} value={name}>{name}</option>))}
+          </select>
+        </div>
+
+        {loading ? (
+          <Loader />
+        ) : (
+          <div className="mb-4">
+            <p className="text-sm text-gray-700">Current Results for {selectedMarket}:</p>
+            <div className="flex items-center gap-2 text-red-600 text-lg font-bold">
+              <span>{`{ ${currentYesterdayResult} }`}</span>
+              <span className="text-black">{`→`}</span>
+              <span>{`[ ${currentTodayResult} ]`}</span>
+            </div>
+          </div>
+        )}
+
+        <div className="mb-4">
+          <label htmlFor="newResult" className="block text-sm font-medium text-gray-700">New Result (1-100)</label>
+          <input
+            type="number"
+            id="newResult"
+            value={newResult}
+            onChange={(e) => setNewResult(e.target.value)}
+            min="1"
+            max="100"
+            className="mt-1 block w-full pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+            placeholder="Enter new result (1-100)"
+          />
+        </div>
+
+        <button
+          onClick={handleUpdateResult}
+          disabled={submitting || loading}
+          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {submitting ? 'Updating...' : 'Update Result'}
+        </button>
+      </div>
+
+      <div className="mt-6">
+        <h4 className="text-md font-semibold mb-2">Update History for {selectedMarket}</h4>
+        <div className="max-h-96 overflow-y-auto border rounded-lg">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Date
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Number
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {history.length > 0 ? (
+                history.map((item) => (
+                  <tr key={item.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {item.date ? item.date.toDate().toLocaleDateString() : 'No date'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {item.number}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="2" className="px-6 py-4 text-center text-sm text-gray-500">
+                    {loading ? 'Loading history...' : 'No history found.'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default HarufUpdate;
+
