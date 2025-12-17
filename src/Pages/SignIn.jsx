@@ -49,7 +49,7 @@ const SignIn = () => {
             placeholder="Enter Your Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 bg-[#042346] border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+            className="w-full px-4 py-3 bg-[#042346] border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <div className="relative w-full"> {/* Wrapper div for relative positioning */}
             <input
@@ -57,7 +57,7 @@ const SignIn = () => {
               placeholder="Enter Your Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-[#042346] border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 pr-10" // Add padding-right
+              className="w-full px-4 py-3 bg-[#042346] border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10" // Add padding-right
             />
             <button
               type="button" // Important to prevent form submission
@@ -70,7 +70,7 @@ const SignIn = () => {
           <button
             onClick={handleSignIn}
             disabled={loading}
-            className="w-full bg-yellow-500 text-black font-bold px-5 py-3 rounded-full hover:bg-yellow-600 transition-colors duration-300 disabled:bg-gray-400"
+            className="w-full bg-blue-500 text-black font-bold px-5 py-3 rounded-full hover:bg-blue-600 transition-colors duration-300 disabled:bg-gray-400"
           >
             {loading ? "Signing In..." : "Sign In"}
           </button>
