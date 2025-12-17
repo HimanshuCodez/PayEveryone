@@ -1,34 +1,65 @@
-import React, { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import React, { useState, useEffect } from "react";
+import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { auth } from "../firebase";
-import { Eye, EyeOff } from 'lucide-react'; // Import Eye icons
 
-const SignIn = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+const PhoneSignIn = () => {
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [step, setStep] = useState(1);
+  const [confirmationResult, setConfirmationResult] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false); // State for password visibility
   const navigate = useNavigate();
 
-  const handleSignIn = async () => {
-    if (!email || !password) return toast.error("Enter email and password");
+  useEffect(() => {
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(
+        auth,
+        "recaptcha-container",
+        {
+          size: "invisible",
+          callback: () => console.log("reCAPTCHA solved"),
+          "expired-callback": () => console.warn("reCAPTCHA expired"),
+        }
+      );
+    }
+  }, []);
+
+  const sendOtp = async () => {
+    if (!phone) return toast.error("Enter phone number");
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast.success("Sign in successful!");
-      navigate("/");
+      const formattedPhone = phone.startsWith("+") ? phone : `+91${phone}`;
+      const result = await signInWithPhoneNumber(
+        auth,
+        formattedPhone,
+        window.recaptchaVerifier
+      );
+      setConfirmationResult(result);
+      setStep(2);
+      toast.success("OTP Sent Successfully!");
     } catch (err) {
-      console.error("Sign in error:", err);
+      console.error("OTP send error:", err);
       toast.error(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
+  const verifyOtp = async () => {
+    if (!otp) return toast.error("Enter OTP");
+    setLoading(true);
+    try {
+      await confirmationResult.confirm(otp);
+      toast.success("Sign in successful!");
+      navigate("/");
+    } catch (err) {
+      console.error("OTP verify error:", err);
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -39,45 +70,48 @@ const SignIn = () => {
             Pay<span className="text-blue-500">Everyone</span>
           </h1>
           <p className="text-gray-300">
-            Sign in to your account
+            {step === 1 ? "Enter your phone number to log in" : "Enter the OTP sent to your phone"}
           </p>
         </div>
 
-        <div className="space-y-4">
-          <input
-            type="email"
-            placeholder="Enter Your Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 bg-[#042346] border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <div className="relative w-full"> {/* Wrapper div for relative positioning */}
+        {step === 1 ? (
+          <div className="space-y-4">
             <input
-              type={showPassword ? "text" : "password"} // Dynamic type
-              placeholder="Enter Your Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-[#042346] border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10" // Add padding-right
+              type="tel"
+              placeholder="Enter Phone Number"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full px-4 py-3 bg-[#042346] border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
-              type="button" // Important to prevent form submission
-              onClick={togglePasswordVisibility}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400"
+              onClick={sendOtp}
+              disabled={loading}
+              className="w-full bg-blue-500 text-black font-bold px-5 py-3 rounded-full hover:bg-blue-600 transition-colors duration-300 disabled:bg-gray-400"
             >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              {loading ? "Sending..." : "Send OTP"}
             </button>
           </div>
-          <button
-            onClick={handleSignIn}
-            disabled={loading}
-            className="w-full bg-blue-500 text-black font-bold px-5 py-3 rounded-full hover:bg-blue-600 transition-colors duration-300 disabled:bg-gray-400"
-          >
-            {loading ? "Signing In..." : "Sign In"}
-          </button>
-        </div>
+        ) : (
+          <div className="space-y-4">
+            <input
+              type="text"
+              placeholder="Enter OTP"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              className="w-full px-4 py-3 bg-[#042346] border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={verifyOtp}
+              className="w-full bg-blue-500 text-black font-bold px-5 py-3 rounded-full hover:bg-blue-600 transition-colors duration-300"
+            >
+              Verify OTP
+            </button>
+          </div>
+        )}
+        <div id="recaptcha-container"></div>
       </div>
     </div>
   );
 };
 
-export default SignIn;
+export default PhoneSignIn;

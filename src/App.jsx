@@ -45,7 +45,7 @@ const AppContent = () => {
   return (
     <>
       {showNav && <div className="mb-16"><Navbar /> </div> }
-      <main className="mb-16">
+      <main className={showNav ? "mb-16" : ""}>
         <Routes>
           <Route path="/auth" element={<Auth />} />
           <Route path="/login" element={<SignIn />} />

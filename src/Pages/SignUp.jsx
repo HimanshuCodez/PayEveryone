@@ -1,19 +1,37 @@
-import React, { useState } from "react";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, query, collection, where, getDocs, addDoc } from "firebase/firestore";
+
+import React, { useState, useEffect } from "react";
+import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { auth, db } from "../firebase";
-import { Eye, EyeOff } from 'lucide-react'; // Import Eye icons
 
-const SignUp = () => {
-  const [fullName, setFullName] = useState("");
+const PhoneSignUp = () => {
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [referralCodeInput, setReferralCodeInput] = useState("");
+  const [generatedReferralCode, setGeneratedReferralCode] = useState("");
+  const [step, setStep] = useState(1);
+  const [confirmationResult, setConfirmationResult] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false); // State for password visibility
   const navigate = useNavigate();
+
+  // ✅ Create reCAPTCHA only once
+  useEffect(() => {
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(
+        auth, // first arg → auth (modular v9)
+        "recaptcha-container", // div id
+        {
+          size: "invisible",
+          callback: () => console.log("reCAPTCHA solved"),
+          "expired-callback": () => console.warn("reCAPTCHA expired"),
+        }
+      );
+    }
+  }, []);
 
   const generateReferralCode = () => {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -24,22 +42,44 @@ const SignUp = () => {
     return result;
   };
 
-  const handleSignUp = async () => {
-    if (!fullName) return toast.error("Enter your full name");
+  const sendOtp = async () => {
+    if (!name) return toast.error("Enter your name");
     if (!email) return toast.error("Enter your email");
-    if (!password) return toast.error("Enter your password");
+    if (!phone) return toast.error("Enter phone number");
     setLoading(true);
-
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      console.log("User signed up:", user);
-
       const newReferralCode = generateReferralCode();
+      setGeneratedReferralCode(newReferralCode); // Store the generated code
+
+      const formattedPhone = phone.startsWith("+") ? phone : `+91${phone}`;
+      const result = await signInWithPhoneNumber(
+        auth,
+        formattedPhone,
+        window.recaptchaVerifier
+      );
+      setConfirmationResult(result);
+      setStep(2);
+      toast.success("OTP Sent Successfully!");
+    } catch (err) {
+      console.error("OTP send error:", err);
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyOtp = async () => {
+    if (!otp) return toast.error("Enter OTP");
+    setLoading(true);
+    try {
+      const result = await confirmationResult.confirm(otp);
+      const user = result.user;
+      console.log("User signed in:", user);
+
+      // Create user document in Firestore if it doesn't exist
       const userDocRef = doc(db, "users", user.uid);
 
       let referrerId = null;
-      let bonusAmount = 0;
       if (referralCodeInput) {
         const referrerQuery = query(collection(db, "users"), where("referralCode", "==", referralCodeInput));
         const referrerSnapshot = await getDocs(referrerQuery);
@@ -47,46 +87,35 @@ const SignUp = () => {
         if (!referrerSnapshot.empty) {
           const referrerDoc = referrerSnapshot.docs[0];
           referrerId = referrerDoc.id;
-          bonusAmount = 50;
-          toast.success(`Referral code applied! You received ₹${bonusAmount} bonus.`);
+          toast.success(`Referral code applied!`); // Removed bonus amount from toast
         } else {
           toast.warn("Invalid referral code. No bonus applied.");
         }
       }
 
       await setDoc(userDocRef, {
-        fullName: fullName,
+        phoneNumber: user.phoneNumber,
+        name: name,
         email: email,
-        role: 'user',
-        referralCode: newReferralCode,
+        role: 'user', // Explicitly set role for new users
+        referralCode: generatedReferralCode,
         referredBy: referrerId,
-        balance: bonusAmount,
+        balance: 0, // Changed to 0, bonus is now for referrer on top-up
         winningMoney: 0,
         createdAt: new Date(),
+        referralBonusAwarded: false, // Added flag
       }, { merge: true });
 
-      if (bonusAmount > 0) {
-        await addDoc(collection(db, "transactions"), {
-          userId: user.uid,
-          type: "referral_bonus",
-          amount: bonusAmount,
-          description: `Referral bonus from ${referralCodeInput}`,
-          createdAt: new Date(),
-        });
-      }
+      // Removed block for adding initial referral bonus transaction
 
-      toast.success("Sign up successful!");
+      toast.success("Sign in successful!");
       navigate("/");
     } catch (err) {
-      console.error("Sign up error:", err);
+      console.error("OTP verify error:", err);
       toast.error(err.message);
     } finally {
       setLoading(false);
     }
-  };
-
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
   };
 
   return (
@@ -97,59 +126,69 @@ const SignUp = () => {
             Pay<span className="text-blue-500">Everyone</span>
           </h1>
           <p className="text-gray-300">
-            Create your account
+            {step === 1 ? "Enter your phone number to continue" : "Enter the OTP sent to your phone"}
           </p>
         </div>
 
-        <div className="space-y-4">
-          <input
-            type="text"
-            placeholder="Enter Your Full Name"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            className="w-full px-4 py-3 bg-[#042346] border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <input
-            type="email"
-            placeholder="Enter Your Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 bg-[#042346] border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <div className="relative w-full"> {/* Wrapper div for relative positioning */}
+        {step === 1 ? (
+          <div className="space-y-4">
             <input
-              type={showPassword ? "text" : "password"} // Dynamic type
-              placeholder="Enter Your Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-[#042346] border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10" // Add padding-right
+              type="text"
+              placeholder="Enter Your Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-4 py-3 bg-[#042346] border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <input
+              type="email"
+              placeholder="Enter Your Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 bg-[#042346] border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <input
+              type="tel"
+              placeholder="Enter Phone Number"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full px-4 py-3 bg-[#042346] border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <input
+              type="text"
+              placeholder="Referral Code (Optional)"
+              value={referralCodeInput}
+              onChange={(e) => setReferralCodeInput(e.target.value)}
+              className="w-full px-4 py-3 bg-[#042346] border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
-              type="button" // Important to prevent form submission
-              onClick={togglePasswordVisibility}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400"
+              onClick={sendOtp}
+              disabled={loading}
+              className="w-full bg-blue-500 text-black font-bold px-5 py-3 rounded-full hover:bg-blue-600 transition-colors duration-300 disabled:bg-gray-400"
             >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              {loading ? "Sending..." : "Send OTP"}
             </button>
           </div>
-          <input
-            type="text"
-            placeholder="Referral Code (Optional)"
-            value={referralCodeInput}
-            onChange={(e) => setReferralCodeInput(e.target.value)}
-            className="w-full px-4 py-3 bg-[#042346] border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            onClick={handleSignUp}
-            disabled={loading}
-            className="w-full bg-blue-500 text-black font-bold px-5 py-3 rounded-full hover:bg-blue-600 transition-colors duration-300 disabled:bg-gray-400"
-          >
-            {loading ? "Signing Up..." : "Sign Up"}
-          </button>
-        </div>
+        ) : (
+          <div className="space-y-4">
+            <input
+              type="text"
+              placeholder="Enter OTP"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              className="w-full px-4 py-3 bg-[#042346] border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={verifyOtp}
+              className="w-full bg-blue-500 text-black font-bold px-5 py-3 rounded-full hover:bg-blue-600 transition-colors duration-300"
+            >
+              Verify OTP
+            </button>
+          </div>
+        )}
+        <div id="recaptcha-container"></div>
       </div>
     </div>
   );
 };
 
-export default SignUp;
+export default PhoneSignUp;
