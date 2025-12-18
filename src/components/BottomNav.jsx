@@ -8,7 +8,7 @@ export default function BottomNav() {
   const { pathname } = location;
 
   return (
-    <div className="fixed bottom-0 left-0 w-full bg-white border-t flex justify-around py-3 md:hidden z-50">
+    <div className="fixed bottom-0 left-0 w-full bg-white border-t flex justify-around py-3 z-50">
       <Link to="/">
         <AiOutlineHome
           className={`text-xl ${
