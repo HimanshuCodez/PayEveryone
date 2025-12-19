@@ -96,19 +96,22 @@ const AdminDashboard = () => {
         const withdrawalRef = doc(db, 'withdrawals', withdrawalId);
         transaction.update(withdrawalRef, { status: action });
 
+        // If a withdrawal is rejected, credit the amount back to the user's main balance.
         if (action === 'rejected') {
           const userRef = doc(db, 'users', userId);
           const userSnap = await transaction.get(userRef);
           if (userSnap.exists()) {
-            const currentWinningMoney = userSnap.data().winningMoney || 0;
-            transaction.update(userRef, { winningMoney: currentWinningMoney + amount });
+            const currentBalance = userSnap.data().balance || 0;
+            transaction.update(userRef, { balance: currentBalance + amount });
+          } else {
+            throw new Error(`User with ID ${userId} not found.`);
           }
         }
       });
       toast.success(`Withdrawal ${action} successfully!`);
     } catch (error) {
       console.error(`Error ${action} withdrawal:`, error);
-      toast.error(`Failed to ${action} withdrawal.`);
+      toast.error(`Failed to ${action} withdrawal: ${error.message}`);
     }
   };
   

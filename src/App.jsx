@@ -7,7 +7,7 @@ import SignUp from "./Pages/SignUp";
 import SignIn from "./Pages/SignIn";
 import Home from "./Pages/Home";
 import useAuthStore from "./store/authStore";
-import Deposit from "./Pages/Wallet";
+import Deposit from "./Pages/Deposit";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import AdminDashboard from "./Admin/Admin";
@@ -29,6 +29,7 @@ import Password from "./Pages/Password";
 import Help from "./Pages/Help";
 import Auth from "./Pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Teams from "./Pages/Teams";
 
 const AppContent = () => {
   const location = useLocation();
@@ -151,6 +152,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute>
                 <Password />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/Teams"
+            element={
+              <ProtectedRoute>
+                <Teams />
               </ProtectedRoute>
             }
           />
