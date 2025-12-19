@@ -61,7 +61,11 @@ const PhoneSignIn = () => {
       navigate("/");
     } catch (err) {
       console.error("OTP verify error:", err);
-      toast.error(err.message);
+      if (err.code === 'auth/invalid-verification-code') {
+        toast.error("The verification code is incorrect. Please try again.");
+      } else {
+        toast.error(err.message);
+      }
     } finally {
       setLoading(false);
     }
