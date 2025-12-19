@@ -1,24 +1,25 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
+// src/firebase.js
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import { getAuth } from 'firebase/auth';
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAL-8BPqaHuFxZldCNEXdhfJ427j2hwFTo",
-  authDomain: "payeveryone-deae7.firebaseapp.com",
-  projectId: "payeveryone-deae7",
-  storageBucket: "payeveryone-deae7.firebasestorage.app",
-  messagingSenderId: "706500042136",
-  appId: "1:706500042136:web:e4b6e7c70af58df7899fed",
-  measurementId: "G-6TWNNR60NJ"
+  apiKey: "AIzaSyCVgfkbPfkef7U3t4TLvJhgArzTcNrzIZc",
+  authDomain: "true-win-circle.firebaseapp.com",
+  projectId: "true-win-circle",
+  storageBucket: "true-win-circle.firebasestorage.app",
+  messagingSenderId: "631622939115",
+  appId: "1:631622939115:web:74d1900eae86a853ffe9ae",
+  measurementId: "G-FXQ79HW7JP"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-const db = getFirestore(app);
+// Check if a Firebase app is already initialized
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+// ✅ Auth instance export
 const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
 
-export { db, auth, app };
-
+export { app, auth, db, storage };
