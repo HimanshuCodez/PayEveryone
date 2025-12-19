@@ -179,9 +179,8 @@ const AppContent = () => {
 };
 
 const App = () => {
-  const { setUser } = useAuthStore();
+  const { setUser, setLoading, loading } = useAuthStore();
   const auth = getAuth();
-  const [loadingAuth, setLoadingAuth] = useState(true);
 
   useEffect(() => {
     let unsubscribeUser = () => {};
@@ -197,16 +196,15 @@ const App = () => {
           } else {
             setUser(userAuth);
           }
-          setLoadingAuth(false);
+          setLoading(false);
         }, (error) => {
           console.error("Snapshot listener error:", error);
-          // Handle the error appropriately
           setUser(null);
-          setLoadingAuth(false);
+          setLoading(false);
         });
       } else {
         setUser(null);
-        setLoadingAuth(false);
+        setLoading(false);
       }
     });
 
@@ -214,9 +212,9 @@ const App = () => {
       unsubscribeAuth();
       unsubscribeUser();
     };
-  }, [auth, setUser]);
+  }, [auth, setUser, setLoading]);
 
-  if (loadingAuth) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-[#042346] text-white flex items-center justify-center">
         <Spinner />
