@@ -84,7 +84,7 @@ export default function Deposit() {
     try {
       await addDoc(collection(db, 'depositRequests'), {
         userId: user.uid,
-        displayName: user.displayName || 'Unknown User',
+        name: user.name || 'Unknown User',
         amount: parseFloat(amount),
         transactionId,
         status: 'pending',
