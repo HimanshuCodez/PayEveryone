@@ -54,6 +54,7 @@ export default function UsdtWithdraw() {
         const withdrawalRef = collection(db, "withdrawals");
         addDoc(withdrawalRef, {
           userId: user.uid,
+          name: user.name || 'Unknown User', // Save the user's name
           amount: withdrawAmount,
           address: address.trim(),
           method: 'USDT',

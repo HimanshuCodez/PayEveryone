@@ -38,8 +38,7 @@ const AdminDashboard = () => {
   
   const [payments, setPayments] = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
-  const [totalUsers, setTotalUsers] = useState(0); // Kept for UI, but will show 0.
-  const [userDetails, setUserDetails] = useState({});
+  const [totalUsers, setTotalUsers] = useState(0);
 
   const { user, setUser } = useAuthStore();
   const isAdmin = user?.role === 'admin';
@@ -52,16 +51,12 @@ const AdminDashboard = () => {
     const unsubscribePayments = onSnapshot(paymentsQuery, (snapshot) => {
       const fetchedPayments = snapshot.docs.map(d => ({ id: d.id, ...d.data(), date: d.data().createdAt ? new Date(d.data().createdAt).toLocaleDateString() : 'N/A', user: d.data().userId }));
       setPayments(fetchedPayments);
-      const userIds = [...new Set(fetchedPayments.map(p => p.userId))];
-      fetchMissingUserDetails(userIds);
     });
 
     const withdrawalsQuery = query(collection(db, 'withdrawals'));
     const unsubscribeWithdrawals = onSnapshot(withdrawalsQuery, (snapshot) => {
       const fetchedWithdrawals = snapshot.docs.map(d => ({ id: d.id, ...d.data(), date: d.data().createdAt ? new Date(d.data().createdAt).toLocaleDateString() : 'N/A', user: d.data().userId }));
       setWithdrawals(fetchedWithdrawals);
-      const userIds = [...new Set(fetchedWithdrawals.map(w => w.userId))];
-      fetchMissingUserDetails(userIds);
     });
 
     const usersQuery = query(collection(db, 'users'));
@@ -75,18 +70,6 @@ const AdminDashboard = () => {
       unsubscribeUsers();
     };
   }, [isAdmin]);
-
-  const fetchMissingUserDetails = (userIds) => {
-    userIds.forEach(async (userId) => {
-      if (!userDetails[userId]) {
-        const userQuery = query(collection(db, 'users'), where('uid', '==', userId));
-        const userSnap = await getDocs(userQuery);
-        if (!userSnap.empty) {
-          setUserDetails(prev => ({ ...prev, [userId]: userSnap.docs[0].data() }));
-        }
-      }
-    });
-  };
 
   // --- ACTION HANDLERS ---
 
@@ -193,7 +176,6 @@ const AdminDashboard = () => {
       case 'withdrawals': 
         return <WithdrawApproval 
                   withdrawals={withdrawals}
-                  userDetails={userDetails}
                   handleWithdrawalApproval={handleWithdrawalApproval}
                 />;
       case 'harufUpdate':

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Check, X } from 'lucide-react';
 
-const WithdrawApproval = ({ withdrawals, userDetails, handleWithdrawalApproval }) => {
+const WithdrawApproval = ({ withdrawals, handleWithdrawalApproval }) => {
   return (
     <div className="p-6">
       <div className="bg-white rounded-lg shadow-sm">
@@ -23,7 +23,7 @@ const WithdrawApproval = ({ withdrawals, userDetails, handleWithdrawalApproval }
             <tbody>
               {withdrawals.map(withdrawal => (
                 <tr key={withdrawal.id} className="border-b hover:bg-gray-50">
-                  <td className="p-4">{userDetails[withdrawal.userId]?.name || 'Unknown User'}</td>
+                  <td className="p-4">{withdrawal.name || 'Unknown User'}</td>
                   <td className="p-4 font-medium">${withdrawal.amount}</td>
                   <td className="p-4">{withdrawal.method}</td>
                   <td className="p-4">
