@@ -9,32 +9,33 @@ const PhoneSignIn = () => {
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState(1);
   const [confirmationResult, setConfirmationResult] = useState(null);
+  const [recaptcha, setRecaptcha] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(
-        auth,
-        "recaptcha-container",
-        {
-          size: "invisible",
-          callback: () => console.log("reCAPTCHA solved"),
-          "expired-callback": () => console.warn("reCAPTCHA expired"),
-        }
-      );
-    }
+    const verifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+      size: "invisible",
+      callback: () => console.log("reCAPTCHA solved"),
+      "expired-callback": () => console.warn("reCAPTCHA expired"),
+    });
+    setRecaptcha(verifier);
+
+    return () => {
+      verifier.clear();
+    };
   }, []);
 
   const sendOtp = async () => {
     if (!phone) return toast.error("Enter phone number");
+    if (!recaptcha) return toast.error("reCAPTCHA is not ready. Please wait.");
     setLoading(true);
     try {
       const formattedPhone = phone.startsWith("+") ? phone : `+91${phone}`;
       const result = await signInWithPhoneNumber(
         auth,
         formattedPhone,
-        window.recaptchaVerifier
+        recaptcha
       );
       setConfirmationResult(result);
       setStep(2);

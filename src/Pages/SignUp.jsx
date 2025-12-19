@@ -15,22 +15,25 @@ const PhoneSignUp = () => {
   const [generatedReferralCode, setGeneratedReferralCode] = useState("");
   const [step, setStep] = useState(1);
   const [confirmationResult, setConfirmationResult] = useState(null);
+  const [recaptcha, setRecaptcha] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // ✅ Create reCAPTCHA only once
   useEffect(() => {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(
-        auth, // first arg → auth (modular v9)
-        "recaptcha-container", // div id
-        {
-          size: "invisible",
-          callback: () => console.log("reCAPTCHA solved"),
-          "expired-callback": () => console.warn("reCAPTCHA expired"),
-        }
-      );
-    }
+    const verifier = new RecaptchaVerifier(
+      auth,
+      "recaptcha-container",
+      {
+        size: "invisible",
+        callback: () => console.log("reCAPTCHA solved"),
+        "expired-callback": () => console.warn("reCAPTCHA expired"),
+      }
+    );
+    setRecaptcha(verifier);
+
+    return () => {
+      verifier.clear();
+    };
   }, []);
 
   const generateReferralCode = () => {
@@ -46,6 +49,7 @@ const PhoneSignUp = () => {
     if (!name) return toast.error("Enter your name");
     if (!email) return toast.error("Enter your email");
     if (!phone) return toast.error("Enter phone number");
+    if (!recaptcha) return toast.error("reCAPTCHA is not ready. Please wait.");
     setLoading(true);
     try {
       const newReferralCode = generateReferralCode();
@@ -55,7 +59,7 @@ const PhoneSignUp = () => {
       const result = await signInWithPhoneNumber(
         auth,
         formattedPhone,
-        window.recaptchaVerifier
+        recaptcha
       );
       setConfirmationResult(result);
       setStep(2);
