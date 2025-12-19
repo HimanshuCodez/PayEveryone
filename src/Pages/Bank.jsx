@@ -26,40 +26,71 @@ export default function Bank() {
   const { user } = useAuthStore();
 
   useEffect(() => {
-    if (method === 'qr' && user) {
-      setLoadingQr(true);
-      const userDocRef = doc(db, 'users', user.uid);
-      const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-          // Assuming the QR code URL is stored in a field named 'userQrCodeUrl'
-          setQrCodeUrl(docSnap.data().userQrCodeUrl || '');
-        } else {
-          setQrCodeUrl('');
-        }
-        setLoadingQr(false);
-      });
-      return () => unsubscribe();
-    } else if (method !== 'qr') {
-      // No need to load QR if the method isn't 'qr'
-      setLoadingQr(false);
-    }
-  }, [method, user]);
+    if (!user) return;
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (method === "upi") {
-      const upiRegex = /^[\w.-]+@[\w.-]+$/;
-      if (!upiRegex.test(upiId)) {
-        toast.error("Please enter a valid UPI ID.");
-        return;
+    setLoadingQr(true); // Used for all loading now
+    const userDocRef = doc(db, 'users', user.uid);
+    const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        // Populate bank details
+        if (data.bankDetails) {
+          setBankName(data.bankDetails.bankName || "");
+          setHolderName(data.bankDetails.holderName || "");
+          setAccountNumber(data.bankDetails.accountNumber || "");
+          setIfscCode(data.bankDetails.ifscCode || "");
+        }
+        // Populate UPI ID
+        setUpiId(data.upiId || "");
+        // Populate QR Code
+        setQrCodeUrl(data.userQrCodeUrl || '');
+      } else {
+        // Reset all fields if user doc doesn't exist
+        setBankName("");
+        setHolderName("");
+        setAccountNumber("");
+        setIfscCode("");
+        setUpiId("");
+        setQrCodeUrl('');
       }
+      setLoadingQr(false);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!user) {
+      toast.error("You must be logged in to save details.");
+      return;
     }
-    // Here you would typically save bankName, holderName, accountNumber, ifscCode, or upiId
-    // to the user's document in Firestore.
-    // Example:
-    // const userDocRef = doc(db, 'users', user.uid);
-    // await setDoc(userDocRef, { [method === 'bank' ? 'bankDetails' : 'upiId']: method === 'bank' ? { bankName, holderName, accountNumber, ifscCode } : upiId }, { merge: true });
-    toast.success("Details submitted successfully!");
+
+    setSubmitting(true);
+    const userDocRef = doc(db, 'users', user.uid);
+
+    try {
+      if (method === "upi") {
+        const upiRegex = /^[\w.-]+@[\w.-]+$/;
+        if (!upiRegex.test(upiId)) {
+          throw new Error("Please enter a valid UPI ID.");
+        }
+        await setDoc(userDocRef, { upiId: upiId }, { merge: true });
+        toast.success("UPI ID saved successfully!");
+
+      } else if (method === "bank") {
+        if (!bankName || !holderName || !accountNumber || !ifscCode) {
+          throw new Error("Please fill all bank detail fields.");
+        }
+        const bankDetails = { bankName, holderName, accountNumber, ifscCode };
+        await setDoc(userDocRef, { bankDetails: bankDetails }, { merge: true });
+        toast.success("Bank details saved successfully!");
+      }
+    } catch (error) {
+      console.error("Error saving details:", error);
+      toast.error(error.message || "Failed to save details.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleFileChange = (e) => {
@@ -190,7 +221,7 @@ export default function Bank() {
           </motion.div>
         </div>
 
-        {/* Form */}
+        {/* Form and Saved Details */}
         <div className="px-5 pb-8">
           <motion.div
             key={method}
@@ -201,18 +232,43 @@ export default function Bank() {
             className="space-y-5"
           >
             {method === "bank" ? (
-              <form onSubmit={handleSubmit}>
-                <FormInput label="Bank Name:" placeholder="Enter Bank Name" value={bankName} onChange={(e) => setBankName(e.target.value)} />
-                <FormInput label="Ac Holder Name:" placeholder="Enter Bank Ac Holder Name" value={holderName} onChange={(e) => setHolderName(e.target.value)} />
-                <FormInput label="Account Number:" placeholder="Enter Account Number" type="number" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} />
-                <FormInput label="Bank IFSC Code:" placeholder="Enter IFSC Code" value={ifscCode} onChange={(e) => setIfscCode(e.target.value)} />
-                <SubmitButton />
-              </form>
+              <>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <h3 className="text-lg font-bold text-gray-800 pt-2">Update Bank Details</h3>
+                  <FormInput label="Bank Name:" placeholder="Enter Bank Name" value={bankName} onChange={(e) => setBankName(e.target.value)} />
+                  <FormInput label="Ac Holder Name:" placeholder="Enter Bank Ac Holder Name" value={holderName} onChange={(e) => setHolderName(e.target.value)} />
+                  <FormInput label="Account Number:" placeholder="Enter Account Number" type="number" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} />
+                  <FormInput label="Bank IFSC Code:" placeholder="Enter IFSC Code" value={ifscCode} onChange={(e) => setIfscCode(e.target.value)} />
+                  <SubmitButton isSubmitting={submitting} />
+                </form>
+                {accountNumber && (
+                  <div className="pt-4 border-t mt-4">
+                    <h3 className="text-lg font-bold text-gray-800 mb-2">Saved Bank Account</h3>
+                    <div className="p-4 bg-slate-50 rounded-lg space-y-2 text-sm">
+                      <p><strong>Bank:</strong> {bankName}</p>
+                      <p><strong>Holder:</strong> {holderName}</p>
+                      <p><strong>Account No:</strong> {accountNumber}</p>
+                      <p><strong>IFSC:</strong> {ifscCode}</p>
+                    </div>
+                  </div>
+                )}
+              </>
             ) : method === "upi" ? (
-              <form onSubmit={handleSubmit}>
-                <FormInput label="UPI ID:" placeholder="example@upi" value={upiId} onChange={(e) => setUpiId(e.target.value)} />
-                <SubmitButton />
-              </form>
+              <>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <h3 className="text-lg font-bold text-gray-800 pt-2">Update UPI ID</h3>
+                  <FormInput label="UPI ID:" placeholder="example@upi" value={upiId} onChange={(e) => setUpiId(e.target.value)} />
+                  <SubmitButton isSubmitting={submitting}/>
+                </form>
+                {upiId && (
+                  <div className="pt-4 border-t mt-4">
+                    <h3 className="text-lg font-bold text-gray-800 mb-2">Saved UPI ID</h3>
+                    <div className="p-4 bg-slate-50 rounded-lg">
+                      <p className="font-semibold text-center">{upiId}</p>
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="pt-2">
                 <div className="bg-white rounded-lg mb-6">
@@ -276,7 +332,7 @@ export default function Bank() {
   );
 }
 
-function SubmitButton() {
+function SubmitButton({ isSubmitting }) {
   return (
     <motion.button
       initial={{ opacity: 0, y: 20 }}
@@ -285,9 +341,10 @@ function SubmitButton() {
       whileHover={{ scale: 1.03 }}
       whileTap={{ scale: 0.97 }}
       type="submit"
-      className="w-full mt-8 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white py-4 rounded-xl font-semibold text-lg shadow-lg transition-all duration-300"
+      disabled={isSubmitting}
+      className="w-full mt-8 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white py-4 rounded-xl font-semibold text-lg shadow-lg transition-all duration-300 disabled:opacity-70"
     >
-      Submit
+      {isSubmitting ? 'Saving...' : 'Save Details'}
     </motion.button>
   );
 }
