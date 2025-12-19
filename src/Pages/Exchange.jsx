@@ -68,8 +68,8 @@ export default function Exchange() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="text-blue-600 text-sm font-semibold hover:underline"
-            >
-              History
+            ><Link to="/History">
+              History</Link >
             </motion.button>
           </motion.div>
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../../firebase';
-import { collection, query, where, onSnapshot, doc, runTransaction, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, runTransaction, orderBy, getDoc } from 'firebase/firestore';
 import { toast } from 'react-toastify';
 
 const DepositApproval = () => {
@@ -12,14 +12,40 @@ const DepositApproval = () => {
     setLoading(true);
     const q = query(
       collection(db, 'depositRequests'),
-      where('status', '==', 'pending')
+      where('status', '==', 'pending'),
+      orderBy('createdAt', 'desc')
     );
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const deposits = [];
-      querySnapshot.forEach((doc) => {
-        deposits.push({ id: doc.id, ...doc.data() });
+    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+      const depositsPromises = querySnapshot.docs.map(async (depositDoc) => {
+        const depositData = depositDoc.data();
+        let userName = 'Unknown User'; // Default name
+
+        // Ensure there is a userId to fetch
+        if (depositData.userId) {
+          const userRef = doc(db, 'users', depositData.userId);
+          try {
+            const userSnap = await getDoc(userRef);
+            if (userSnap.exists()) {
+              // Use the 'name' field from the user document
+              userName = userSnap.data().name || 'Name Not Set';
+            } else {
+              userName = 'User Not Found';
+            }
+          } catch (error) {
+            console.error("Error fetching user:", error);
+            userName = 'Error Fetching Name';
+          }
+        }
+        
+        return { 
+          id: depositDoc.id, 
+          ...depositData, 
+          name: userName // Add the fetched name to the deposit object
+        };
       });
+
+      const deposits = await Promise.all(depositsPromises);
       setPendingDeposits(deposits);
       setLoading(false);
     });
@@ -75,7 +101,7 @@ const DepositApproval = () => {
             }
             transaction.update(depositRef, { status: 'rejected' });
         });
-        toast.warn(`Deposit for ${deposit.displayName} was rejected.`);
+        toast.warn(`Deposit for ${deposit.name} was rejected.`);
     } catch (error) {
         console.error("Rejection failed: ", error);
         toast.error(`Failed to reject deposit: ${error.message}`);
