@@ -9,7 +9,7 @@ export default function UserProfile() {
 
   const referralCode = user?.referralCode || "N/A";
   const invitationLink = user?.uid 
-    ? `https://payeveryone.net/register?refer=${user.referralCode || ''}`
+    ? `https://payeveryone.in/register?refer=${user.referralCode || ''}`
     : "N/A";
 
   const copyToClipboard = (text, message) => {
@@ -90,7 +90,7 @@ export default function UserProfile() {
           >
             <DetailItem
               label="Full Name"
-              value={user.fullName || "N/A"}
+              value={user.name || "N/A"}
             />
             <DetailItem
               label="Email"

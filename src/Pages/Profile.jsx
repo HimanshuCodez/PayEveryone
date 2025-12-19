@@ -74,7 +74,7 @@ export default function Profile() {
             transition={{ delay: 0.5 }}
             className="text-center text-xl font-semibold"
           >
-            {user.fullName || user.email || "User"}
+            {user.name || user.email || "User"}
           </motion.h2>
 
           <motion.div
@@ -83,7 +83,7 @@ export default function Profile() {
             transition={{ delay: 0.6 }}
             className="flex justify-center items-center gap-2 mt-2 text-sm text-gray-300"
           >
-            <span>User ID : {user.phoneNumber ? user.uid.substring(0, 10) : "N/A"}</span>
+            <span>User ID : {user.phoneNumber ? user.phoneNumber.substring(0, 6) : "N/A"}</span>
             <Copy size={16} className="cursor-pointer hover:text-white transition" />
           </motion.div>
 

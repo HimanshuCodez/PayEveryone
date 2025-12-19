@@ -52,7 +52,7 @@ const DepositApproval = () => {
         transaction.update(userRef, { balance: newBalance });
         transaction.update(depositRef, { status: 'approved' });
       });
-      toast.success(`Deposit of $${deposit.amount} for ${deposit.displayName} approved.`);
+      toast.success(`Deposit of $${deposit.amount} for ${deposit.name} approved.`);
     } catch (error) {
       console.error("Transaction failed: ", error);
       toast.error(`Failed to approve deposit: ${error.message}`);
@@ -109,7 +109,7 @@ const DepositApproval = () => {
               <tbody>
                 {pendingDeposits.map((deposit) => (
                   <tr key={deposit.id} className="border-b hover:bg-gray-50">
-                    <td className="p-3 font-medium">{deposit.fullName}</td>
+                    <td className="p-3 font-medium">{deposit.name}</td>
                     <td className="p-3 font-semibold text-green-600">${deposit.amount.toFixed(2)}</td>
                     <td className="p-3 truncate max-w-xs">{deposit.transactionId}</td>
                     <td className="p-3 text-gray-500">{deposit.createdAt?.toDate().toLocaleDateString()}</td>
