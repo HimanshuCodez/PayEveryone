@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import useAuthStore from '../store/authStore';
 import { FiUpload } from "react-icons/fi";
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -9,6 +10,10 @@ export default function WalletUI() {
   const [ourPrice, setOurPrice] = useState('0');
   const [liveRates, setLiveRates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [userBalance, setUserBalance] = useState(0);
+  const [userWinningMoney, setUserWinningMoney] = useState(0);
+
+  const { user } = useAuthStore();
 
   useEffect(() => {
     const docRef = doc(db, 'marketData', 'prices');
@@ -28,6 +33,34 @@ export default function WalletUI() {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setUserBalance(0);
+      setUserWinningMoney(0);
+      return;
+    }
+
+    const userDocRef = doc(db, 'users', user.uid);
+    const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const userData = docSnap.data();
+        setUserBalance(userData.balance || 0);
+        setUserWinningMoney(userData.winningMoney || 0);
+      } else {
+        console.log("User document not found for UID:", user.uid);
+        setUserBalance(0);
+        setUserWinningMoney(0);
+      }
+    }, (error) => {
+      console.error("Error fetching user data for Home page:", error);
+      toast.error("Failed to load user balance and winning money.");
+      setUserBalance(0);
+      setUserWinningMoney(0);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-slate-100 flex justify-center items-start pt-8 pb-12">
@@ -59,7 +92,7 @@ export default function WalletUI() {
             transition={{ delay: 0.4 }}
             className="text-3xl md:text-4xl font-bold mt-2"
           >
-            $0 ≈ ₹0
+            ${userBalance.toFixed(2)} ≈ ₹{userWinningMoney.toFixed(2)}
           </motion.h1>
 
           <motion.div
@@ -105,14 +138,14 @@ export default function WalletUI() {
               <FiUpload className="text-green-500 text-2xl md:text-3xl" />
               <div>
                 <p className="text-gray-600 text-sm md:text-base">Deposit</p>
-                <p className="font-bold text-lg">$0</p>
+                <p className="font-bold text-lg">${userBalance.toFixed(2)}</p>
               </div>
             </div>
             <div className="flex items-center gap-4 pl-6">
               <FiUpload className="text-red-500 text-2xl md:text-3xl rotate-180" />
               <div>
                 <p className="text-gray-600 text-sm md:text-base">Withdrawal</p>
-                <p className="font-bold text-lg">₹0</p>
+                <p className="font-bold text-lg">₹{userWinningMoney.toFixed(2)}</p>
               </div>
             </div>
           </motion.div>
