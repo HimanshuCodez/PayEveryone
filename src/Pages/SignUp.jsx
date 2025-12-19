@@ -66,7 +66,11 @@ const PhoneSignUp = () => {
       toast.success("OTP Sent Successfully!");
     } catch (err) {
       console.error("OTP send error:", err);
-      toast.error(err.message);
+      if (err.code === 'auth/too-many-requests') {
+        toast.error("Too many signup attempts, please try again later.");
+      } else {
+        toast.error(err.message);
+      }
     } finally {
       setLoading(false);
     }
