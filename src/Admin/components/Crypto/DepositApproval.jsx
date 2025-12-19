@@ -10,10 +10,10 @@ const DepositApproval = () => {
 
   useEffect(() => {
     setLoading(true);
+    // orderBy removed from query to avoid needing a composite index
     const q = query(
       collection(db, 'depositRequests'),
-      where('status', '==', 'pending'),
-      orderBy('createdAt', 'desc')
+      where('status', '==', 'pending')
     );
 
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
@@ -21,13 +21,11 @@ const DepositApproval = () => {
         const depositData = depositDoc.data();
         let userName = 'Unknown User'; // Default name
 
-        // Ensure there is a userId to fetch
         if (depositData.userId) {
           const userRef = doc(db, 'users', depositData.userId);
           try {
             const userSnap = await getDoc(userRef);
             if (userSnap.exists()) {
-              // Use the 'name' field from the user document
               userName = userSnap.data().name || 'Name Not Set';
             } else {
               userName = 'User Not Found';
@@ -41,13 +39,31 @@ const DepositApproval = () => {
         return { 
           id: depositDoc.id, 
           ...depositData, 
-          name: userName // Add the fetched name to the deposit object
+          name: userName 
         };
       });
 
-      const deposits = await Promise.all(depositsPromises);
-      setPendingDeposits(deposits);
-      setLoading(false);
+      try {
+        const deposits = await Promise.all(depositsPromises);
+        
+        // Sort deposits on the client-side
+        deposits.sort((a, b) => {
+          const dateA = a.createdAt?.toDate() || new Date(0);
+          const dateB = b.createdAt?.toDate() || new Date(0);
+          return dateB - dateA; // Descending order
+        });
+
+        setPendingDeposits(deposits);
+      } catch (error) {
+        console.error("Error processing deposit requests:", error);
+        toast.error("There was an error processing the requests.");
+      } finally {
+        setLoading(false);
+      }
+    }, (error) => {
+      console.error("Error fetching deposit requests: ", error);
+      toast.error("Failed to load deposit requests. The query may be invalid.");
+      setLoading(false); // Ensure loading is turned off on query error
     });
 
     return () => unsubscribe();

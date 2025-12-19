@@ -43,7 +43,7 @@ export default function Deposit() {
     const q = query(
       collection(db, 'depositRequests'),
       where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc')
+      // orderBy removed to avoid composite index requirement
     );
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -51,8 +51,20 @@ export default function Deposit() {
       querySnapshot.forEach((doc) => {
         history.push({ id: doc.id, ...doc.data() });
       });
+      
+      // Client-side sorting
+      history.sort((a, b) => {
+        const dateA = a.createdAt?.toDate() || new Date(0);
+        const dateB = b.createdAt?.toDate() || new Date(0);
+        return dateB - dateA; // Descending order
+      });
+
       setDepositHistory(history);
       setHistoryLoading(false);
+    }, (error) => {
+      console.error("Error fetching deposit history: ", error);
+      toast.error("Failed to load deposit history. The query may be invalid.");
+      setHistoryLoading(false); // Ensure loading is turned off on query error
     });
 
     return () => unsubscribe();
