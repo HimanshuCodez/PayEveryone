@@ -12,8 +12,7 @@ const DepositApproval = () => {
     setLoading(true);
     const q = query(
       collection(db, 'depositRequests'),
-      where('status', '==', 'pending'),
-      orderBy('createdAt', 'asc')
+      where('status', '==', 'pending')
     );
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {

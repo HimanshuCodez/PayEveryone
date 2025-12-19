@@ -128,7 +128,7 @@ const AdminDashboard = () => {
     <div className={`fixed inset-y-0 left-0 z-30 w-64 bg-gray-900 text-white p-4 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:w-64`}>
       <div className="mb-8 flex justify-center items-center">
         <div>
-          <h1 className="text-2xl font-bold text-center">SattaKing</h1>
+          <h1 className="text-2xl font-bold text-center">PayEveryone</h1>
           <p className="text-gray-400 text-center text-sm">Admin Dashboard</p>
         </div>
       </div>
