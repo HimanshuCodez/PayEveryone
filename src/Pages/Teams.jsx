@@ -9,7 +9,7 @@ export default function Teams() {
   const todayUser = 0;
   const totalReward = 0;
   const todayReward = 0;
-  const referralLink = "https://payeveryone.net/register?refer=246520";
+  const referralLink = "https://payeveryone.in/register?refer=246520";
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(referralLink);
