@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Banknote, Landmark, QrCode } from "lucide-react";
+import { ArrowLeft, Banknote, Landmark, QrCode, Upload, CheckCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { db, storage } from '../firebase';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import useAuthStore from '../store/authStore';
 import { motion } from "framer-motion";
 
 export default function Bank() {
@@ -16,20 +18,32 @@ export default function Bank() {
   const [qrCodeUrl, setQrCodeUrl] = useState("");
   const [loadingQr, setLoadingQr] = useState(true);
 
+  // State for QR upload
+  const [qrCodeFile, setQrCodeFile] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+
+  const { user } = useAuthStore();
+
   useEffect(() => {
-    if (method === 'qr') {
-      const docRef = doc(db, 'paymentMethods', 'qrCode');
-      const unsubscribe = onSnapshot(docRef, (docSnap) => {
+    if (method === 'qr' && user) {
+      setLoadingQr(true);
+      const userDocRef = doc(db, 'users', user.uid);
+      const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
         if (docSnap.exists()) {
-          setQrCodeUrl(docSnap.data().url);
+          // Assuming the QR code URL is stored in a field named 'userQrCodeUrl'
+          setQrCodeUrl(docSnap.data().userQrCodeUrl || '');
         } else {
           setQrCodeUrl('');
         }
         setLoadingQr(false);
       });
       return () => unsubscribe();
+    } else if (method !== 'qr') {
+      // No need to load QR if the method isn't 'qr'
+      setLoadingQr(false);
     }
-  }, [method]);
+  }, [method, user]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -40,7 +54,63 @@ export default function Bank() {
         return;
       }
     }
+    // Here you would typically save bankName, holderName, accountNumber, ifscCode, or upiId
+    // to the user's document in Firestore.
+    // Example:
+    // const userDocRef = doc(db, 'users', user.uid);
+    // await setDoc(userDocRef, { [method === 'bank' ? 'bankDetails' : 'upiId']: method === 'bank' ? { bankName, holderName, accountNumber, ifscCode } : upiId }, { merge: true });
     toast.success("Details submitted successfully!");
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files[0]) {
+      setQrCodeFile(e.target.files[0]);
+    }
+  };
+
+  const handleUpload = () => {
+    if (!qrCodeFile) {
+      toast.error("Please select a QR code image first.");
+      return;
+    }
+    if (!user) {
+      toast.error("You must be logged in to upload a QR code.");
+      return;
+    }
+
+    setSubmitting(true);
+    const storageRef = ref(storage, `user_qrcodes/${user.uid}/${Date.now()}_${qrCodeFile.name}`);
+    const uploadTask = uploadBytesResumable(storageRef, qrCodeFile);
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setUploadProgress(progress);
+      },
+      (error) => {
+        console.error("Upload error:", error);
+        toast.error("Failed to upload image.");
+        setSubmitting(false);
+      },
+      () => {
+        getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
+          try {
+            const userDocRef = doc(db, 'users', user.uid);
+            await setDoc(userDocRef, { userQrCodeUrl: downloadURL }, { merge: true });
+            setQrCodeUrl(downloadURL);
+            toast.success("Your QR Code has been updated!");
+          } catch (dbError) {
+            console.error("Database error:", dbError);
+            toast.error("Failed to save your QR code.");
+          } finally {
+            setSubmitting(false);
+            setQrCodeFile(null);
+            setUploadProgress(0);
+          }
+        });
+      }
+    );
   };
 
   return (
@@ -64,7 +134,7 @@ export default function Bank() {
             </motion.div>
           </Link>
           <h2 className="text-center text-xl font-semibold">
-            Add New Bank Account
+            Add Withdrawal Method
           </h2>
         </motion.div>
 
@@ -106,10 +176,7 @@ export default function Bank() {
               <motion.button
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => {
-                  setMethod("qr");
-                  setLoadingQr(true);
-                }}
+                onClick={() => setMethod("qr")}
                 className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold transition-all ${
                   method === "qr"
                     ? "bg-white text-slate-900 shadow-md"
@@ -124,7 +191,7 @@ export default function Bank() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="px-5 pb-8">
+        <div className="px-5 pb-8">
           <motion.div
             key={method}
             initial={{ opacity: 0, x: method === "bank" ? -20 : method === "upi" ? 0 : 20 }}
@@ -134,65 +201,94 @@ export default function Bank() {
             className="space-y-5"
           >
             {method === "bank" ? (
-              <>
+              <form onSubmit={handleSubmit}>
                 <FormInput label="Bank Name:" placeholder="Enter Bank Name" value={bankName} onChange={(e) => setBankName(e.target.value)} />
                 <FormInput label="Ac Holder Name:" placeholder="Enter Bank Ac Holder Name" value={holderName} onChange={(e) => setHolderName(e.target.value)} />
                 <FormInput label="Account Number:" placeholder="Enter Account Number" type="number" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} />
                 <FormInput label="Bank IFSC Code:" placeholder="Enter IFSC Code" value={ifscCode} onChange={(e) => setIfscCode(e.target.value)} />
-              </>
+                <SubmitButton />
+              </form>
             ) : method === "upi" ? (
-              <FormInput label="UPI ID:" placeholder="example@upi" value={upiId} onChange={(e) => setUpiId(e.target.value)} />
+              <form onSubmit={handleSubmit}>
+                <FormInput label="UPI ID:" placeholder="example@upi" value={upiId} onChange={(e) => setUpiId(e.target.value)} />
+                <SubmitButton />
+              </form>
             ) : (
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.5 }}
-                className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-2xl shadow-inner"
-              >
-                <p className="text-lg font-semibold text-gray-800 mb-6">Scan to Pay</p>
-                {loadingQr ? (
-                  <motion.div
-                    animate={{ opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                    className="w-48 h-48 bg-gray-200 rounded-lg flex items-center justify-center"
-                  >
-                    <p className="text-gray-500">Loading QR...</p>
-                  </motion.div>
-                ) : qrCodeUrl ? (
-                  <motion.img
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", stiffness: 200 }}
-                    src={qrCodeUrl}
-                    alt="QR Code"
-                    className="w-64 h-64 border-4 border-white shadow-2xl rounded-2xl object-contain"
-                  />
-                ) : (
-                  <p className="text-gray-500">QR Code not available.</p>
-                )}
-                <p className="text-sm text-gray-500 mt-5 text-center">
-                  Please use a UPI app to scan this code.
-                </p>
-              </motion.div>
+              <div className="pt-2">
+                <div className="bg-white rounded-lg mb-6">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 text-center">Your Current QR Code</h3>
+                  {loadingQr ? (
+                    <p className="text-center text-gray-500">Loading...</p>
+                  ) : qrCodeUrl ? (
+                    <div className="flex justify-center items-center p-4 border rounded-lg">
+                      <img src={qrCodeUrl} alt="Your UPI QR Code" className="max-w-xs max-h-48 rounded" />
+                    </div>
+                  ) : (
+                    <p className="text-center text-gray-500 py-4">You have not uploaded a QR code.</p>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-lg">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 text-center">Upload New QR Code</h3>
+                  <div className="flex flex-col items-center gap-4">
+                    <label htmlFor="qr-upload" className="w-full flex justify-center px-6 py-8 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500">
+                      {qrCodeFile ? (
+                        <div className="text-center text-green-600">
+                          <CheckCircle size={40} className="mx-auto" />
+                          <p className="font-semibold mt-2 text-sm">{qrCodeFile.name}</p>
+                          <p className="text-xs text-gray-500">Ready to upload.</p>
+                        </div>
+                      ) : (
+                        <div className="text-center text-gray-500">
+                          <Upload size={40} className="mx-auto" />
+                          <p className="font-semibold mt-2">Click to select an image</p>
+                          <p className="text-sm">PNG, JPG, GIF</p>
+                        </div>
+                      )}
+                    </label>
+                    <input
+                      id="qr-upload"
+                      type="file"
+                      accept="image/png, image/jpeg, image/gif"
+                      className="hidden"
+                      onChange={handleFileChange}
+                    />
+                    {submitting && (
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
+                      </div>
+                    )}
+                    <button
+                      onClick={handleUpload}
+                      disabled={submitting || !qrCodeFile}
+                      className="w-full bg-blue-600 text-white font-bold px-8 py-3 rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+                    >
+                      {submitting ? `Uploading... ${Math.round(uploadProgress)}%` : 'Upload & Save QR'}
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </motion.div>
-
-          {method !== "qr" && (
-            <motion.button
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              type="submit"
-              className="w-full mt-8 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white py-4 rounded-xl font-semibold text-lg shadow-lg transition-all duration-300"
-            >
-              Submit
-            </motion.button>
-          )}
-        </form>
+        </div>
       </motion.div>
     </div>
+  );
+}
+
+function SubmitButton() {
+  return (
+    <motion.button
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.6 }}
+      whileHover={{ scale: 1.03 }}
+      whileTap={{ scale: 0.97 }}
+      type="submit"
+      className="w-full mt-8 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white py-4 rounded-xl font-semibold text-lg shadow-lg transition-all duration-300"
+    >
+      Submit
+    </motion.button>
   );
 }
 

@@ -140,7 +140,7 @@ const AdminDashboard = () => {
           { id: 'dashboard', label: 'Dashboard', icon: Settings },
        
           { id: 'withdrawals', label: 'Withdrawal Approval', icon: DollarSign },
-          { id: 'adminUpi', label: 'Admin UPI', icon: QrCode },
+        
           { id: 'depositApproval', label: 'Deposit Approval', icon: Check },
           { id: 'usdtDeposit', label: 'USDT Deposit', icon: CreditCard },
           { id: 'usdtRates', label: 'USDT Rates', icon: Edit },
