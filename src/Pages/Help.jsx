@@ -21,10 +21,10 @@ export default function Help() {
           </p>
           <p>
             2. Do Not Share Your Passwords With Anyone, Even If They Claim To Be
-            From The Coinzaa Team.
+            From The PayEveryone Team.
           </p>
           <p>
-            3. Coinzaa Customer Support Is Only Available Through Our Official
+            3. PayEveryone Customer Support Is Only Available Through Our Official
             Customer Support In The App.
           </p>
           <p>

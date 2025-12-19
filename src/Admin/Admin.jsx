@@ -27,6 +27,10 @@ import DashboardView from './components/DashboardView';
 import AllUsers from './components/AllUsers';
 import HarufUpdate from './components/HarufUpdate';
 import Bets from './components/Bets'; // Import the new component
+import AdminUpi from './components/Crypto/AdminUpi';
+import DepositApproval from './components/Crypto/DepositApproval';
+import UsdtDeposit from './components/Crypto/UsdtDeposit';
+import UsdtRates from './components/Crypto/UsdtRates';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -132,9 +136,11 @@ const AdminDashboard = () => {
         {[
           { id: 'dashboard', label: 'Dashboard', icon: Settings },
           { id: 'allUsers', label: 'All Users', icon: Users },
-          { id: 'bets', label: 'Betting History', icon: Trophy },
           { id: 'withdrawals', label: 'Withdrawal Approval', icon: DollarSign },
-          { id: 'harufUpdate', label: 'Market Results', icon: Edit },
+          { id: 'adminUpi', label: 'Admin UPI', icon: QrCode },
+          { id: 'depositApproval', label: 'Deposit Approval', icon: Check },
+          { id: 'usdtDeposit', label: 'USDT Deposit', icon: CreditCard },
+          { id: 'usdtRates', label: 'USDT Rates', icon: Edit },
         ].map(item => (
           <button
             key={item.id}
@@ -189,6 +195,14 @@ const AdminDashboard = () => {
                 />;
       case 'harufUpdate':
         return <HarufUpdate />;
+      case 'adminUpi':
+        return <AdminUpi />;
+      case 'depositApproval':
+        return <DepositApproval />;
+      case 'usdtDeposit':
+        return <UsdtDeposit />;
+      case 'usdtRates':
+        return <UsdtRates />;
       default: 
         return <DashboardView stats={stats} />;
     }

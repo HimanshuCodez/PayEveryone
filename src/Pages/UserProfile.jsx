@@ -44,7 +44,7 @@ export default function UserProfile() {
         <div className="px-4 py-4 space-y-3">
           <DetailItem label="Full Name" value={user.fullName || "N/A"} />
           <DetailItem label="Email" value={user.email || "N/A"} />
-          <DetailItem label="User ID" value={user.uid ? user.uid.substring(0, 6) : "N/A"} />
+          <DetailItem label="User ID" value={user.phoneNumber || "N/A"} />
           <DetailItem label="Invitation Code" value={referralCode}
             onCopy={() => copyToClipboard(referralCode, "Invitation code copied!")}
           />
