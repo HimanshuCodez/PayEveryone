@@ -157,7 +157,7 @@ const AllUsers = () => {
             
               <th className="p-4 text-left text-sm font-semibold text-gray-600">Email</th>
               <th className="p-4 text-left text-sm font-semibold text-gray-600">Joined Date</th>
-              <th className="p-4 text-right text-sm font-semibold text-gray-600">Total Balance</th>
+              <th className="p-4 text-right text-sm font-semibold text-gray-600">Usdt Balance</th>
             </tr>
           </thead>
           <tbody>
@@ -166,7 +166,7 @@ const AllUsers = () => {
               return (
                 <tr key={user.id} className="border-b border-gray-200 last:border-0 hover:bg-gray-50 transition-colors">
                   <td className="p-4 font-medium text-blue-600 hover:underline cursor-pointer" onClick={() => handleUserClick(user)}>
-                    {user.fullName || 'N/A'}
+                    {user.name || 'N/A'}
                   </td>
              
                   <td className="p-4 text-gray-600">
