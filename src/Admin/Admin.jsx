@@ -121,7 +121,7 @@ const AdminDashboard = () => {
       <nav className="space-y-2">
         {[
           { id: 'dashboard', label: 'Dashboard', icon: Settings },
-       
+        { id: 'allUsers', label: 'All Users', icon: Users },
           { id: 'withdrawals', label: 'Withdrawal Approval', icon: DollarSign },
         
           { id: 'depositApproval', label: 'Deposit Approval', icon: Check },
