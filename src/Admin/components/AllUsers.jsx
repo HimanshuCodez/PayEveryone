@@ -18,7 +18,7 @@ const AllUsers = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const usersQuery = query(collection(db, 'users'), orderBy('fullName'));
+        const usersQuery = query(collection(db, 'users'), orderBy('name'));
         const querySnapshot = await getDocs(usersQuery);
         const usersList = querySnapshot.docs.map(doc => ({
           id: doc.id,
