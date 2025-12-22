@@ -59,7 +59,7 @@ const AdminDashboard = () => {
       setWithdrawals(fetchedWithdrawals);
     });
 
-    const usersQuery = query(collection(db, 'users'));
+    const usersQuery = query(collection(db, 'users'), where('appName', '==', 'PayEveryone'));
     const unsubscribeUsers = onSnapshot(usersQuery, (snapshot) => {
       setTotalUsers(snapshot.size);
     });
