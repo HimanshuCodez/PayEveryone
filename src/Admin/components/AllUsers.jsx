@@ -95,18 +95,23 @@ const AllUsers = () => {
     setIsUpdating(true);
     try {
       const userRef = doc(db, 'users', editingUser.id);
-      const amountToAdd = parseFloat(newBalance);
+      const amountToChange = parseFloat(newBalance);
 
-      if (isNaN(amountToAdd) || amountToAdd <= 0) {
+      if (isNaN(amountToChange) || amountToChange === 0) {
         console.error("Invalid amount value");
-        setError("Invalid amount value. Please enter a valid positive number.");
+        setError("Invalid amount value. Please enter a valid non-zero number.");
         setIsUpdating(false);
         return;
       }
       
       const currentBalance = editingUser.balance || 0;
-      const newBalanceValue = currentBalance + amountToAdd;
+      const newBalanceValue = currentBalance + amountToChange;
 
+      if (newBalanceValue < 0) {
+        setError("Resulting balance cannot be negative.");
+        setIsUpdating(false);
+        return;
+      }
 
       await updateDoc(userRef, {
         balance: newBalanceValue,
@@ -114,8 +119,8 @@ const AllUsers = () => {
       
       await addDoc(collection(db, 'transactions'), {
         userId: editingUser.id,
-        amount: amountToAdd,
-        type: 'admin_credit',
+        amount: Math.abs(amountToChange),
+        type: amountToChange > 0 ? 'admin_credit' : 'admin_debit',
         status: 'approved',
         createdAt: new Date(),
       });
@@ -215,12 +220,12 @@ const AllUsers = () => {
                   Current Balance: <span className='font-bold'>₹{editingUser.balance?.toFixed(2) || '0.00'}</span>
                 </label>
                 <label htmlFor="new-balance" className="block text-sm font-medium text-gray-700 mb-1">
-                  Amount to Add
+                  Amount to Add/Subtract
                 </label>
                 <input
                   type="number"
                   id="new-balance"
-                  placeholder="Enter amount to add"
+                  placeholder="Enter amount to add or subtract"
                   value={newBalance}
                   onChange={(e) => setNewBalance(e.target.value)}
                   className="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
