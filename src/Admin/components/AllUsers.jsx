@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs, query, orderBy, doc, updateDoc, addDoc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, doc, updateDoc, addDoc, where } from 'firebase/firestore';
 import { db } from '../../firebase';
 import Loader from '../../components/Loader';
 import UserBettingHistory from './UserBettingHistory';
@@ -18,7 +18,11 @@ const AllUsers = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const usersQuery = query(collection(db, 'users'), orderBy('name'));
+        const usersQuery = query(
+          collection(db, 'users'),
+          orderBy('name'),
+          where('appName', '==', 'PayEveryone')
+        );
         const querySnapshot = await getDocs(usersQuery);
         const usersList = querySnapshot.docs.map(doc => ({
           id: doc.id,

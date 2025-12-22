@@ -112,6 +112,7 @@ const PhoneSignUp = () => {
         winningMoney: 0,
         createdAt: new Date(),
         referralBonusAwarded: false, // Added flag
+        appName: "PayEveryone"
       }, { merge: true });
 
       // Removed block for adding initial referral bonus transaction
