@@ -193,25 +193,12 @@ const AllUsers = () => {
         </table>
       </div>
 
-      {selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="p-4 border-b flex justify-between items-center sticky top-0 bg-white z-10">
-              <h3 className="text-xl font-bold">Betting History for {selectedUser.fullName}</h3>
-              <button onClick={closeModal} className="text-gray-500 hover:text-gray-800 font-bold text-2xl">&times;</button>
-            </div>
-            <div className="p-4">
-              <UserBettingHistory userId={selectedUser.id} />
-            </div>
-          </div>
-        </div>
-      )}
 
       {editingUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-sm">
             <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="text-xl font-bold">Edit Wallet for {editingUser.fullName}</h3>
+              <h3 className="text-xl font-bold">Edit Wallet for {editingUser.name}</h3>
               <button onClick={() => setEditingUser(null)} className="text-gray-500 hover:text-gray-800 font-bold text-2xl">&times;</button>
             </div>
             <div className="p-6">
