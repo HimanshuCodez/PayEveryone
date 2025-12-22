@@ -18,7 +18,7 @@ export default function Auth() {
                   : "text-gray-300 hover:bg-white/10"
               }`}
             >
-              Sign In
+              Sign Up
             </button>
             <button
               onClick={() => setIsSignIn(false)}
@@ -28,7 +28,7 @@ export default function Auth() {
                   : "text-gray-300 hover:bg-white/10"
               }`}
             >
-              Sign Up
+              Sign In
             </button>
           </div>
         </div>
