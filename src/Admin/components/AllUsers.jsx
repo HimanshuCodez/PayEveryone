@@ -18,9 +18,9 @@ const AllUsers = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
+        // Query without orderBy to avoid needing a composite index
         const usersQuery = query(
           collection(db, 'users'),
-          orderBy('name'),
           where('appName', '==', 'PayEveryone')
         );
         const querySnapshot = await getDocs(usersQuery);
@@ -28,6 +28,10 @@ const AllUsers = () => {
           id: doc.id,
           ...doc.data()
         }));
+        
+        // Sort users by name on the client-side
+        usersList.sort((a, b) => a.name.localeCompare(b.name));
+
         setUsers(usersList);
       } catch (err) {
         setError('Failed to fetch users. Please check console for details.');
