@@ -162,7 +162,7 @@ const AllUsers = () => {
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="p-4 text-left text-sm font-semibold text-gray-600">Name</th>
-            
+             <th className="p-4 text-left text-sm font-semibold text-gray-600">Phone Number</th>
               <th className="p-4 text-left text-sm font-semibold text-gray-600">Email</th>
               <th className="p-4 text-left text-sm font-semibold text-gray-600">Joined Date</th>
               <th className="p-4 text-right text-sm font-semibold text-gray-600">Usdt Balance</th>
@@ -176,7 +176,7 @@ const AllUsers = () => {
                   <td className="p-4 font-medium text-blue-600 hover:underline cursor-pointer" onClick={() => handleUserClick(user)}>
                     {user.name || 'N/A'}
                   </td>
-             
+             <td className="p-4 text-gray-600">{user.phoneNumber || 'N/A'}</td>
                   <td className="p-4 text-gray-600">
                     <div className="flex items-center justify-between">
                       {user.email || 'N/A'}

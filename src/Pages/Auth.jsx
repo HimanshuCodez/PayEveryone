@@ -32,7 +32,7 @@ export default function Auth() {
             </button>
           </div>
         </div>
-        {isSignIn ? <SignIn /> : <SignUp />}
+        {isSignIn ?<SignUp />  : <SignIn />}
       </div>
     </div>
   );
