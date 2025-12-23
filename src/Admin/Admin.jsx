@@ -14,7 +14,8 @@ import {
   Bell,
   Settings,
   LogOut,
-  Menu
+  Menu,
+  Repeat
 } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { collection, query, onSnapshot, doc, runTransaction, getDocs, where, deleteDoc } from 'firebase/firestore';
@@ -31,6 +32,7 @@ import AdminUpi from './components/Crypto/AdminUpi';
 import DepositApproval from './components/Crypto/DepositApproval';
 import UsdtDeposit from './components/Crypto/UsdtDeposit';
 import UsdtRates from './components/Crypto/UsdtRates';
+import ExchangeApproval from './components/Crypto/ExchangeApproval';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -122,11 +124,12 @@ const AdminDashboard = () => {
         {[
           { id: 'dashboard', label: 'Dashboard', icon: Settings },
         { id: 'allUsers', label: 'All Users', icon: Users },
+        { id: 'usdtRates', label: 'USDT Rates', icon: Edit },
+        { id: 'depositApproval', label: 'Deposit Approval', icon: Check },
+        { id: 'usdtDeposit', label: 'USDT Deposit', icon: CreditCard },
           { id: 'withdrawals', label: 'Withdrawal Approval', icon: DollarSign },
+          { id: 'exchangeApproval', label: 'Exchange Approval', icon: Repeat },
         
-          { id: 'depositApproval', label: 'Deposit Approval', icon: Check },
-          { id: 'usdtDeposit', label: 'USDT Deposit', icon: CreditCard },
-          { id: 'usdtRates', label: 'USDT Rates', icon: Edit },
         ].map(item => (
           <button
             key={item.id}
@@ -188,6 +191,8 @@ const AdminDashboard = () => {
         return <UsdtDeposit />;
       case 'usdtRates':
         return <UsdtRates />;
+      case 'exchangeApproval':
+        return <ExchangeApproval />;
       default: 
         return <DashboardView stats={stats} />;
     }
