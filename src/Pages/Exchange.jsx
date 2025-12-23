@@ -1,11 +1,63 @@
 import { IndianRupee } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import useAuthStore from "../store/authStore";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "../firebase";
 
 export default function Exchange() {
   const [amount, setAmount] = useState("");
   const [password, setPassword] = useState("");
+  const [ourPrice, setOurPrice] = useState("0");
+  const [loading, setLoading] = useState(true);
+  const [userBalance, setUserBalance] = useState(0);
+  const { user } = useAuthStore();
+
+  useEffect(() => {
+    const docRef = doc(db, "marketData", "prices");
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setOurPrice(data.ourPrice || "N/A");
+      } else {
+        console.log("No such document!");
+        setOurPrice("Error");
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setUserBalance(0);
+      return;
+    }
+
+    const userDocRef = doc(db, "users", user.uid);
+    const unsubscribe = onSnapshot(
+      userDocRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const userData = docSnap.data();
+          setUserBalance(userData.balance || 0);
+        } else {
+          console.log("User document not found for UID:", user.uid);
+          setUserBalance(0);
+        }
+      },
+      (error) => {
+        console.error("Error fetching user data for Exchange page:", error);
+        setUserBalance(0);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const convertedBalanceInINR = userBalance * parseFloat(ourPrice);
 
   return (
     <div className="min-h-screen bg-slate-100 flex justify-center items-start pt-8 pb-12">
@@ -33,7 +85,9 @@ export default function Exchange() {
             </motion.div>
           </div>
 
-          <h1 className="text-center text-2xl font-bold mt-4">Exchange Wallet</h1>
+          <h1 className="text-center text-2xl font-bold mt-4">
+            Exchange Wallet
+          </h1>
 
           {/* Wave */}
           <div className="absolute bottom-0 left-0 w-full overflow-hidden">
@@ -48,7 +102,11 @@ export default function Exchange() {
                     "M0,80L60,74.7C120,69,240,59,360,48C480,37,600,27,720,37.3C840,48,960,80,1080,85.3C1200,91,1320,69,1380,58.7L1440,48L1440,120L0,120Z",
                   ],
                 }}
-                transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+                transition={{
+                  duration: 10,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
                 fill="#ffffff"
               />
             </svg>
@@ -63,13 +121,21 @@ export default function Exchange() {
             transition={{ delay: 0.6, duration: 0.6 }}
             className="flex justify-between items-center mb-6"
           >
-            <p className="text-sm font-medium text-gray-700">Available : <span className="font-bold text-lg">₹ 0</span></p>
+            <p className="text-sm font-medium text-gray-700">
+              Available :{" "}
+              <span className="font-bold text-lg">
+                ₹{" "}
+                {loading || isNaN(convertedBalanceInINR)
+                  ? "..."
+                  : convertedBalanceInINR.toFixed(2)}
+              </span>
+            </p>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="text-blue-600 text-sm font-semibold hover:underline"
-            ><Link to="/History">
-              History</Link >
+            >
+              <Link to="/History">History</Link>
             </motion.button>
           </motion.div>
 
@@ -80,7 +146,9 @@ export default function Exchange() {
             transition={{ delay: 0.7, duration: 0.5 }}
             className="mb-5"
           >
-            <label className="text-sm font-medium text-gray-700">Amount (INR)</label>
+            <label className="text-sm font-medium text-gray-700">
+              Amount (INR)
+            </label>
             <div className="flex mt-1 shadow-sm">
               <motion.input
                 whileFocus={{ scale: 1.02 }}
@@ -104,7 +172,9 @@ export default function Exchange() {
             transition={{ delay: 0.8, duration: 0.5 }}
             className="mb-8"
           >
-            <label className="text-sm font-medium text-gray-700">Withdraw Password</label>
+            <label className="text-sm font-medium text-gray-700">
+              Withdraw Password
+            </label>
             <motion.input
               whileFocus={{ scale: 1.02 }}
               transition={{ type: "spring", stiffness: 300 }}
