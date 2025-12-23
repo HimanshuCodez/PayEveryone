@@ -12,7 +12,6 @@ export default function WalletUI() {
   const [loading, setLoading] = useState(true);
   const [userBalance, setUserBalance] = useState(0);
   const [userWinningMoney, setUserWinningMoney] = useState(0);
-
   const { user } = useAuthStore();
 
   useEffect(() => {
@@ -62,6 +61,8 @@ export default function WalletUI() {
     return () => unsubscribe();
   }, [user]);
 
+  const convertedBalanceInINR = userBalance * parseFloat(ourPrice);
+
   return (
     <div className="min-h-screen bg-slate-100 flex justify-center items-start pt-8 pb-12">
       <motion.div
@@ -92,7 +93,7 @@ export default function WalletUI() {
             transition={{ delay: 0.4 }}
             className="text-3xl md:text-4xl font-bold mt-2"
           >
-            ${userBalance.toFixed(2)} ≈ ₹{userWinningMoney.toFixed(2)}
+            ${userBalance.toFixed(2)} ≈ ₹{loading || isNaN(convertedBalanceInINR) ? '...' : convertedBalanceInINR.toFixed(2)}
           </motion.h1>
 
           <motion.div
