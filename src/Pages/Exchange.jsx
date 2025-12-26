@@ -116,7 +116,6 @@ export default function Exchange() {
       toast.success("Withdrawal request submitted successfully!");
       setAmount("");
       setPassword("");
-      setSelectedPaymentMethod(null);
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -207,7 +206,7 @@ export default function Exchange() {
               </div>
             </div>
 
-            {selectedPaymentMethod && !exchangeRequests.some(r => r.status === 'pending') && (
+            {selectedPaymentMethod && (
               <>
                 <div className="mb-8">
                   <label className="text-sm font-medium text-gray-700">Withdraw Password</label>
