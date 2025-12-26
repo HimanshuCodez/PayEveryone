@@ -17,11 +17,19 @@ export default function ExchangeApproval() {
     });
 
     const q = collection(db, "exchangeRequests");
-    const unsubscribeRequests = onSnapshot(q, (querySnapshot) => {
-      const requestsData = [];
-      querySnapshot.forEach((doc) => {
-        requestsData.push({ id: doc.id, ...doc.data() });
-      });
+    const unsubscribeRequests = onSnapshot(q, async (querySnapshot) => {
+      const requestsData = await Promise.all(querySnapshot.docs.map(async (d) => {
+        const request = { id: d.id, ...d.data() };
+        if (request.userId) {
+          const userRef = doc(db, "users", request.userId);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            request.name = userSnap.data().name;
+            request.userPhoneNumber = userSnap.data().phoneNumber;
+          }
+        }
+        return request;
+      }));
       setRequests(requestsData.sort((a, b) => b.createdAt - a.createdAt));
       setLoading(false);
     });
@@ -109,8 +117,9 @@ export default function ExchangeApproval() {
           {pendingRequests.length > 0 ? pendingRequests.map(request => (
             <div key={request.id} className="bg-white p-4 rounded-lg shadow-md grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
               <div>
-                <p className="text-xs text-gray-500">User ID</p>
-                <p className="font-mono text-sm">{request.userId}</p>
+                <p className="text-xs text-gray-500">User</p>
+                <p className="font-semibold">{request.name || 'N/A'}</p>
+                <p className="font-mono text-sm">{request.userPhoneNumber || request.userId}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Amount</p>
@@ -133,7 +142,7 @@ export default function ExchangeApproval() {
           <div className="space-y-4">
           {requests.filter(r => r.status !== 'pending').map(request => (
             <div key={request.id} className={`p-4 rounded-lg shadow-md opacity-70 ${request.status === 'approved' ? 'bg-green-50' : 'bg-red-50'}`}>
-              <p className="font-mono text-sm">{request.userId}</p>
+              <p className="font-semibold">{request.name || request.userId}</p>
               <p>₹{request.amount.toFixed(2)} - <span className={`font-bold uppercase text-sm ${request.status === 'approved' ? 'text-green-700' : 'text-red-700'}`}>{request.status}</span></p>
             </div>
           ))}
